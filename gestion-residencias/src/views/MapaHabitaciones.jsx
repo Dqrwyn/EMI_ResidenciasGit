@@ -1,182 +1,129 @@
-import React, { useState, useEffect, useCallback } from "react";
+// src/views/MapaHabitaciones.jsx
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useHotkeys } from "react-hotkeys-hook";
-import { FiSun, FiMoon, FiPlus, FiMinus, FiX, FiSave, FiUser, FiHome, FiEdit2, FiTrash2, FiChevronLeft, FiChevronRight, FiDownload } from "react-icons/fi";
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { toast, Toaster } from "react-hot-toast";
+
+// Importar componentes divididos
+import PaymentHistory from "../components/habitaciones/PaymentHistory";
+import PaymentDashboard from "../components/habitaciones/PaymentDashboard";
+import SearchSystem from "../components/habitaciones/SearchSystem";
+import RoomCard from "../components/habitaciones/RoomCard";
+import RoomModal from "../components/layout/RoomModal";
+
+// Importar constantes y utilidades
+import {
+  COLOR_PALETTE,
+  ROOM_TYPES,
+  ADMIN_ROOM_TYPES,
+  ASSET_STATUS,
+  PAYMENT_STATUS,
+  MONTHS,
+  PAYMENT_MONTHS,
+  ACADEMIC_YEARS,
+  FLOORS,
+  ADMIN_FLOORS,
+  SIDES,
+  ROOMS_PER_SIDE,
+  ADMIN_SIDES,
+  ADMIN_ROOMS_PER_SIDE,
+  ROOM_PRICES,
+  CAREERS,
+  INITIAL_ROOM_DATA,
+  INITIAL_ADMIN_ROOM_DATA,
+  fadeIn,
+  slideUp,
+  calculateStudentDebt,
+  countPendingMonths,
+  getGlobalRoomNumber
+} from "../components/utils/constants";
+
+// Importar imágenes
 import loaderImage from '../assets/images.png';
-import VideoFondo from "../components/VideoFondo";
-import QRCode from "react-qr-code";
 import img1 from '../assets/1.jpg';
 import img2 from '../assets/2.jpg';
 import img3 from '../assets/3.jpg';
 import img4 from '../assets/4.jpg';
 
-// Constantes para tipos de habitación
-const ROOM_TYPES = {
-  INDIVIDUAL: "Individual",
-  SHARED: "Compartido"
-};
-
-const ADMIN_ROOM_TYPES = {
-  INDIVIDUAL: "Individual",
-  SHARED: "Compartido"
-};
-
-// Pisos disponibles
-const FLOORS = [
-  { id: 3, name: "P2" },
-  { id: 2, name: "P1" },
-  { id: 1, name: "PB" },
-];
-
-const ADMIN_FLOORS = [
-  { id: 1, name: "PB" },
-  { id: 2, name: "P1" }
-];
-
-// Lados del edificio
-const SIDES = ["Izquierdo", "Derecho"];
-const ROOMS_PER_SIDE = 7;
-
-const ADMIN_SIDES = ["Izquierdo", "Derecho"];
-const ADMIN_ROOMS_PER_SIDE = 5;
-
-// Datos iniciales de ejemplo
-const INITIAL_ROOM_DATA = {
-  "Damas-PB-Izquierdo-1": {
-    students: [
-      {
-        id: "stu-001",
-        name: "Juan Pérez",
-        semester: "3er Semestre",
-        photo: "",
-        assets: [
-          { id: "ast-001", name: "Catre", code: "A001" },
-          { id: "ast-002", name: "Escritorio", code: "A002" },
-          { id: "ast-003", name: "Ropero", code: "A003" },
-        ],
-      },
-    ],
-  },
-  "Varones-PB-Derecho-2": {
-    students: [
-      {
-        id: "stu-002",
-        name: "María López",
-        semester: "5to Semestre",
-        photo: "",
-        assets: [
-          { id: "ast-004", name: "Catre", code: "A001" },
-          { id: "ast-005", name: "Ropero", code: "A003" },
-        ],
-      },
-      {
-        id: "stu-003",
-        name: "Carlos Gómez",
-        semester: "2do Semestre",
-        photo: "",
-        assets: [
-          { id: "ast-006", name: "Mesa", code: "A010" },
-          { id: "ast-007", name: "Silla", code: "A011" },
-        ],
-      },
-    ],
-  },
-};
-
-const INITIAL_ADMIN_ROOM_DATA = {
-  "Admin-PB-Izquierdo-1": {
-    staff: [
-      {
-        id: "staff-001",
-        name: "Carlos Mendoza",
-        position: "Administrador",
-        department: "Dirección",
-        photo: "",
-        assets: [
-          { id: "ast-101", name: "Escritorio", code: "AD001" },
-          { id: "ast-102", name: "Silla", code: "AD002" }
-        ]
-      }
-    ]
-  },
-  "Military-P1-Derecho-2": {
-    staff: [
-      {
-        id: "mil-001",
-        name: "Teniente Pérez",
-        position: "Oficial",
-        department: "Seguridad",
-        photo: "",
-        assets: [
-          { id: "ast-201", name: "Armario", code: "MIL001" },
-          { id: "ast-202", name: "Cama", code: "MIL002" }
-        ]
-      }
-    ]
-  }
-};
-
-// Animaciones
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.3 } },
-  exit: { opacity: 0, transition: { duration: 0.2 } }
-};
-
-const slideUp = {
-  hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.3 } },
-  exit: { y: 20, opacity: 0, transition: { duration: 0.2 } }
-};
-
-const RoomMap = () => {
+const MapaHabitaciones = ({ modoOscuro, alternarModoOscuro }) => {
   // Estados
   const [isLoading, setIsLoading] = useState(true);
   const [showLoader, setShowLoader] = useState(true);
-  const [roomsStatus, setRoomsStatus] = useState({
-    "Damas-PB-Izquierdo-1": true,
-    "Varones-PB-Derecho-2": true,
-  });
-  const [adminRoomsStatus, setAdminRoomsStatus] = useState({
-    "Admin-PB-Izquierdo-1": true,
-    "Military-P1-Derecho-2": true,
-  });
-  const [darkMode, setDarkMode] = useState(() => {
-    const savedMode = localStorage.getItem('darkMode');
-    return savedMode ? JSON.parse(savedMode) : false;
-  });
-  const [roomsData, setRoomsData] = useState(INITIAL_ROOM_DATA);
-  const [adminRoomsData, setAdminRoomsData] = useState(INITIAL_ADMIN_ROOM_DATA);
+  const [roomsStatus, setRoomsStatus] = useState({});
+  const [adminRoomsStatus, setAdminRoomsStatus] = useState({});
+  const [darkMode, setDarkMode] = useState(modoOscuro);
+  const [roomsData, setRoomsData] = useState({});
+  const [adminRoomsData, setAdminRoomsData] = useState({});
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedAdminRoom, setSelectedAdminRoom] = useState(null);
   const [studentsForm, setStudentsForm] = useState([]);
   const [staffForm, setStaffForm] = useState([]);
-  const [videoOpacity, setVideoOpacity] = useState(0.3);
-  const [editMode, setEditMode] = useState(false);
   const [activeSection, setActiveSection] = useState('estudiantes-section');
+  const [showPaymentDashboard, setShowPaymentDashboard] = useState(false);
+  const [showSearchSystem, setShowSearchSystem] = useState(false);
   const images = [img1, img2, img3, img4];
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Referencias para las secciones
+  const estudiantesSectionRef = useRef(null);
+  const personalSectionRef = useRef(null);
 
-  // Efecto para persistir el modo oscuro
+  // Sincronizar darkMode con prop
   useEffect(() => {
-    localStorage.setItem('darkMode', JSON.stringify(darkMode));
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
+    setDarkMode(modoOscuro);
+  }, [modoOscuro]);
 
-  // Efecto para simular carga inicial
+  // Cargar datos iniciales desde MongoDB
   useEffect(() => {
-    const loadingTimer = setTimeout(() => {
-      setShowLoader(false);
-      setTimeout(() => setIsLoading(false), 500);
-    }, 2000);
-
-    return () => clearTimeout(loadingTimer);
+    const loadInitialData = async () => {
+      try {
+        setIsLoading(true);
+        setShowLoader(true);
+        
+        const response = await fetch('/api/rooms');
+        const data = await response.json();
+        
+        if (response.ok) {
+          setRoomsData(data.rooms || INITIAL_ROOM_DATA);
+          setAdminRoomsData(data.adminRooms || INITIAL_ADMIN_ROOM_DATA);
+        } else {
+          console.error('Error cargando datos:', data.message);
+          setRoomsData(INITIAL_ROOM_DATA);
+          setAdminRoomsData(INITIAL_ADMIN_ROOM_DATA);
+        }
+        
+        const statusResponse = await fetch('/api/rooms-status');
+        const statusData = await statusResponse.json();
+        
+        if (statusResponse.ok) {
+          setRoomsStatus(statusData.roomsStatus || {});
+          setAdminRoomsStatus(statusData.adminRoomsStatus || {});
+        }
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        setRoomsData(INITIAL_ROOM_DATA);
+        setAdminRoomsData(INITIAL_ADMIN_ROOM_DATA);
+      } finally {
+        setTimeout(() => {
+          setShowLoader(false);
+          setTimeout(() => setIsLoading(false), 500);
+        }, 1000);
+      }
+    };
+    
+    loadInitialData();
   }, []);
+
+  // Efecto para el carrusel automático de imágenes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => 
+        prevIndex === images.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [images.length]);
 
   // Efecto para simular carga al seleccionar habitación
   useEffect(() => {
@@ -194,12 +141,9 @@ const RoomMap = () => {
   // Efecto para detectar la sección visible
   useEffect(() => {
     const handleScroll = () => {
-      const estudiantesSection = document.getElementById('estudiantes-section');
-      const personalSection = document.getElementById('personal-section');
-      
-      if (estudiantesSection && personalSection) {
-        const estudiantesPosition = estudiantesSection.getBoundingClientRect();
-        const personalPosition = personalSection.getBoundingClientRect();
+      if (estudiantesSectionRef.current && personalSectionRef.current) {
+        const estudiantesPosition = estudiantesSectionRef.current.getBoundingClientRect();
+        const personalPosition = personalSectionRef.current.getBoundingClientRect();
         
         if (personalPosition.top <= 100) {
           setActiveSection('personal-section');
@@ -213,19 +157,23 @@ const RoomMap = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Hotkeys para accesibilidad
-  useHotkeys('ctrl+d', () => toggleDarkMode());
-  useHotkeys('esc', () => {
-    setSelectedRoom(null);
-    setSelectedAdminRoom(null);
-  });
-
   // Función para desplazarse a secciones
-  const scrollToSection = (sectionId) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-      setActiveSection(sectionId);
+  const scrollToSection = (sectionRef) => {
+    if (sectionRef && sectionRef.current) {
+      const element = sectionRef.current;
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - 80;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+      
+      if (sectionRef === estudiantesSectionRef) {
+        setActiveSection('estudiantes-section');
+      } else if (sectionRef === personalSectionRef) {
+        setActiveSection('personal-section');
+      }
     }
   };
 
@@ -290,12 +238,23 @@ const RoomMap = () => {
           studentsData[i] || {
             id: `temp-${Date.now()}-${i}`,
             name: "",
+            ci: "",
+            cellphone: "",
+            career: "",
             semester: "",
+            code: "",
+            roomNumber: selectedRoom.label + "-" + selectedRoom.number,
+            roomType: selectedRoom.type,
+            tutorName: "",
+            tutorCellphone: "",
+            admissionDate: new Date().toISOString().split('T')[0],
+            observation: "",
             photo: "",
+            paymentHistory: {},
             assets: [
-              { id: `temp-asset-${Date.now()}-${i}-0`, name: "", code: "" },
-              { id: `temp-asset-${Date.now()}-${i}-1`, name: "", code: "" },
-              { id: `temp-asset-${Date.now()}-${i}-2`, name: "", code: "" },
+              { id: `temp-asset-${Date.now()}-${i}-0`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" },
+              { id: `temp-asset-${Date.now()}-${i}-1`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" },
+              { id: `temp-asset-${Date.now()}-${i}-2`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" },
             ],
           }
         );
@@ -321,8 +280,8 @@ const RoomMap = () => {
             department: "",
             photo: "",
             assets: [
-              { id: `temp-asset-${Date.now()}-${i}-0`, name: "", code: "" },
-              { id: `temp-asset-${Date.now()}-${i}-1`, name: "", code: "" }
+              { id: `temp-asset-${Date.now()}-${i}-0`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" },
+              { id: `temp-asset-${Date.now()}-${i}-1`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" }
             ]
           }
         );
@@ -330,12 +289,6 @@ const RoomMap = () => {
       setStaffForm(newStaff);
     }
   }, [selectedAdminRoom, adminRoomsData]);
-
-  // Genera un ID global para la habitación
-  const getGlobalRoomNumber = (floorName, side, localNumber) => {
-    const sideOffset = side === "Izquierdo" ? 1 : 8;
-    return `${floorName}-${sideOffset + localNumber - 1}`;
-  };
 
   // Alternar estado ocupado/disponible
   const toggleOccupied = (id) => {
@@ -349,42 +302,79 @@ const RoomMap = () => {
   };
 
   // Vaciar información de la habitación
-  const clearRoomData = (roomId) => {
-    setRoomsData(prev => ({
-      ...prev,
-      [roomId]: {
-        students: []
+  const clearRoomData = async (roomId) => {
+    try {
+      const response = await fetch(`/api/rooms/${roomId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setRoomsData(prev => {
+          const newData = {...prev};
+          delete newData[roomId];
+          return newData;
+        });
+        setRoomsStatus(prev => ({ ...prev, [roomId]: false }));
+        toast.success("Información de la habitación vaciada");
+      } else {
+        const errorData = await response.json();
+        toast.error(`Error vaciando habitación: ${errorData.message}`);
       }
-    }));
-    setRoomsStatus(prev => ({ ...prev, [roomId]: true }));
-    toast.success("Información de la habitación vaciada");
+    } catch (error) {
+      console.error('Error vaciando habitación:', error);
+      toast.error("Error de conexión al vaciar habitación");
+    }
     
     if (selectedRoom && selectedRoom.id === roomId) {
       const maxStudents = selectedRoom.type === ROOM_TYPES.SHARED ? 3 : 2;
       const emptyStudents = Array(maxStudents).fill().map((_, i) => ({
         id: `temp-${Date.now()}-${i}`,
         name: "",
+        ci: "",
+        cellphone: "",
+        career: "",
         semester: "",
+        code: "",
+        roomNumber: selectedRoom.label + "-" + selectedRoom.number,
+        roomType: selectedRoom.type,
+        tutorName: "",
+        tutorCellphone: "",
+        admissionDate: new Date().toISOString().split('T')[0],
+        observation: "",
         photo: "",
+        paymentHistory: {},
         assets: [
-          { id: `temp-asset-${Date.now()}-${i}-0`, name: "", code: "" },
-          { id: `temp-asset-${Date.now()}-${i}-1`, name: "", code: "" },
-          { id: `temp-asset-${Date.now()}-${i}-2`, name: "", code: "" },
+          { id: `temp-asset-${Date.now()}-${i}-0`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" },
+          { id: `temp-asset-${Date.now()}-${i}-1`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" },
+          { id: `temp-asset-${Date.now()}-${i}-2`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" },
         ],
       }));
       setStudentsForm(emptyStudents);
     }
   };
 
-  const clearAdminRoomData = (roomId) => {
-    setAdminRoomsData(prev => ({
-      ...prev,
-      [roomId]: {
-        staff: []
+  const clearAdminRoomData = async (roomId) => {
+    try {
+      const response = await fetch(`/api/admin-rooms/${roomId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setAdminRoomsData(prev => {
+          const newData = {...prev};
+          delete newData[roomId];
+          return newData;
+        });
+        setAdminRoomsStatus(prev => ({ ...prev, [roomId]: false }));
+        toast.success("Información de la habitación vaciada");
+      } else {
+        const errorData = await response.json();
+        toast.error(`Error vaciando habitación: ${errorData.message}`);
       }
-    }));
-    setAdminRoomsStatus(prev => ({ ...prev, [roomId]: true }));
-    toast.success("Información de la habitación vaciada");
+    } catch (error) {
+      console.error('Error vaciando habitación administrativa:', error);
+      toast.error("Error de conexión al vaciar habitación");
+    }
     
     if (selectedAdminRoom && selectedAdminRoom.id === roomId) {
       const maxStaff = selectedAdminRoom.type === ADMIN_ROOM_TYPES.SHARED ? 2 : 1;
@@ -395,20 +385,12 @@ const RoomMap = () => {
         department: "",
         photo: "",
         assets: [
-          { id: `temp-asset-${Date.now()}-${i}-0`, name: "", code: "" },
-          { id: `temp-asset-${Date.now()}-${i}-1`, name: "", code: "" }
+          { id: `temp-asset-${Date.now()}-${i}-0`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" },
+          { id: `temp-asset-${Date.now()}-${i}-1`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" }
         ]
       }));
       setStaffForm(emptyStaff);
     }
-  };
-
-  // Alternar modo oscuro
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    toast(`Modo ${!darkMode ? 'oscuro' : 'claro'} activado`, {
-      icon: !darkMode ? <FiMoon /> : <FiSun />,
-    });
   };
 
   // Manejar cambios en el formulario
@@ -428,6 +410,24 @@ const RoomMap = () => {
     });
   };
 
+  // Manejar cambios en los pagos
+  const handlePaymentUpdate = (studentIndex, year, month, data) => {
+    setStudentsForm(prev => {
+      const updated = [...prev];
+      const currentPaymentHistory = updated[studentIndex].paymentHistory || {};
+      const updatedYear = { ...(currentPaymentHistory[year] || {}) };
+      
+      updatedYear[month] = data;
+      
+      updated[studentIndex].paymentHistory = {
+        ...currentPaymentHistory,
+        [year]: updatedYear
+      };
+      
+      return updated;
+    });
+  };
+
   // Manejar cambios en los activos
   const handleAssetChange = (studentIndex, assetIndex, field, value) => {
     setStudentsForm(prev => {
@@ -436,7 +436,13 @@ const RoomMap = () => {
       const updatedAssets = [...currentAssets];
       
       if (!updatedAssets[assetIndex]) {
-        updatedAssets[assetIndex] = { id: `temp-asset-${Date.now()}`, name: "", code: "" };
+        updatedAssets[assetIndex] = { 
+          id: `temp-asset-${Date.now()}`, 
+          name: "", 
+          code: "", 
+          status: ASSET_STATUS.OPTIMO, 
+          description: "" 
+        };
       }
       
       updatedAssets[assetIndex] = {
@@ -456,7 +462,13 @@ const RoomMap = () => {
       const updatedAssets = [...currentAssets];
       
       if (!updatedAssets[assetIndex]) {
-        updatedAssets[assetIndex] = { id: `temp-asset-${Date.now()}`, name: "", code: "" };
+        updatedAssets[assetIndex] = { 
+          id: `temp-asset-${Date.now()}`, 
+          name: "", 
+          code: "", 
+          status: ASSET_STATUS.OPTIMO, 
+          description: "" 
+        };
       }
       
       updatedAssets[assetIndex] = {
@@ -496,7 +508,7 @@ const RoomMap = () => {
       const updated = [...prev];
       updated[studentIndex].assets = [
         ...updated[studentIndex].assets,
-        { id: `new-asset-${Date.now()}`, name: "", code: "" }
+        { id: `new-asset-${Date.now()}`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" }
       ];
       return updated;
     });
@@ -507,7 +519,7 @@ const RoomMap = () => {
       const updated = [...prev];
       updated[staffIndex].assets = [
         ...updated[staffIndex].assets,
-        { id: `new-asset-${Date.now()}`, name: "", code: "" }
+        { id: `new-asset-${Date.now()}`, name: "", code: "", status: ASSET_STATUS.OPTIMO, description: "" }
       ];
       return updated;
     });
@@ -552,26 +564,44 @@ const RoomMap = () => {
       assets: (student.assets || []).filter(asset => asset.name.trim() !== "")
     }));
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const response = await fetch(`/api/rooms/${selectedRoom.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          students: studentsWithValidAssets,
+        }),
+      });
 
-    setRoomsData(prev => ({
-      ...prev,
-      [selectedRoom.id]: {
-        students: studentsWithValidAssets,
-      },
-    }));
+      if (response.ok) {
+        setRoomsData(prev => ({
+          ...prev,
+          [selectedRoom.id]: {
+            students: studentsWithValidAssets,
+          },
+        }));
 
-    if (validStudents.length > 0) {
-      setRoomsStatus(prev => ({ ...prev, [selectedRoom.id]: true }));
+        if (validStudents.length > 0) {
+          setRoomsStatus(prev => ({ ...prev, [selectedRoom.id]: true }));
+        }
+        
+        toast.success("Información de la habitación guardada exitosamente!");
+      } else {
+        const errorData = await response.json();
+        toast.error(`Error guardando: ${errorData.message}`);
+      }
+    } catch (error) {
+      console.error('Error guardando habitación:', error);
+      toast.error("Error de conexión al guardar");
+    } finally {
+      setShowLoader(false);
+      setTimeout(() => {
+        setIsLoading(false);
+        setSelectedRoom(null);
+      }, 500);
     }
-    
-    toast.success("Información de la habitación guardada exitosamente!");
-    
-    setShowLoader(false);
-    setTimeout(() => {
-      setIsLoading(false);
-      setSelectedRoom(null);
-    }, 500);
   };
 
   const handleAdminSubmit = async (e) => {
@@ -595,111 +625,86 @@ const RoomMap = () => {
       assets: (staff.assets || []).filter(asset => asset.name.trim() !== "")
     }));
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const response = await fetch(`/api/admin-rooms/${selectedAdminRoom.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          staff: staffWithValidAssets,
+        }),
+      });
 
-    setAdminRoomsData(prev => ({
-      ...prev,
-      [selectedAdminRoom.id]: {
-        staff: staffWithValidAssets,
-      },
-    }));
+      if (response.ok) {
+        setAdminRoomsData(prev => ({
+          ...prev,
+          [selectedAdminRoom.id]: {
+            staff: staffWithValidAssets,
+          },
+        }));
 
-    if (validStaff.length > 0) {
-      setAdminRoomsStatus(prev => ({ ...prev, [selectedAdminRoom.id]: true }));
+        if (validStaff.length > 0) {
+          setAdminRoomsStatus(prev => ({ ...prev, [selectedAdminRoom.id]: true }));
+        }
+        
+        toast.success("Información de la habitación guardada exitosamente!");
+      } else {
+        const errorData = await response.json();
+        toast.error(`Error guardando: ${errorData.message}`);
+      }
+    } catch (error) {
+      console.error('Error guardando habitación administrativa:', error);
+      toast.error("Error de conexión al guardar");
+    } finally {
+      setShowLoader(false);
+      setTimeout(() => {
+        setIsLoading(false);
+        setSelectedAdminRoom(null);
+      }, 500);
     }
-    
-    toast.success("Información de la habitación guardada exitosamente!");
-    
-    setShowLoader(false);
-    setTimeout(() => {
-      setIsLoading(false);
-      setSelectedAdminRoom(null);
-    }, 500);
   };
 
-  // Generar QR para habitación
-  const generateRoomQR = (roomId) => {
-    return JSON.stringify({
-      roomId,
-      building: roomId.split('-')[0],
-      floor: roomId.split('-')[1],
-      side: roomId.split('-')[2],
-      number: roomId.split('-')[3],
-      status: roomsStatus[roomId] ? "Ocupado" : "Disponible",
-      lastUpdated: new Date().toISOString()
+  // Función para verificar si una habitación tiene problemas de pago
+  const hasPaymentIssues = (roomId) => {
+    const room = roomsData[roomId];
+    if (!room || !room.students) return false;
+    
+    return room.students.some(student => {
+      const roomType = roomId.includes('Individual') || parseInt(roomId.split('-').pop()) <= 4 ? 'INDIVIDUAL' : 'SHARED';
+      return calculateStudentDebt(student, roomType) > 0;
     });
   };
 
-  const generateAdminRoomQR = (roomId) => {
-    return JSON.stringify({
-      roomId,
-      building: roomId.split('-')[0],
-      floor: roomId.split('-')[1],
-      side: roomId.split('-')[2],
-      number: roomId.split('-')[3],
-      status: adminRoomsStatus[roomId] ? "Ocupado" : "Disponible",
-      lastUpdated: new Date().toISOString()
-    });
-  };
-
-  // Descargar QR
-  const handleDownloadQR = () => {
-    const svg = document.querySelector('.QRCode svg');
-    if (!svg) return;
-    
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      const pngFile = canvas.toDataURL('image/png');
-      const downloadLink = document.createElement('a');
-      downloadLink.download = `QR-Habitacion-${selectedRoom.label}-${selectedRoom.number}.png`;
-      downloadLink.href = pngFile;
-      downloadLink.click();
-    };
-    
-    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
-  };
-
-  const handleDownloadAdminQR = () => {
-    const svg = document.querySelector('.AdminQRCode svg');
-    if (!svg) return;
-    
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      const pngFile = canvas.toDataURL('image/png');
-      const downloadLink = document.createElement('a');
-      downloadLink.download = `QR-Habitacion-${selectedAdminRoom.label}-${selectedAdminRoom.number}.png`;
-      downloadLink.href = pngFile;
-      downloadLink.click();
-    };
-    
-    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
+  // Función para obtener el color según el estado del activo
+  const getStatusColor = (status) => {
+    switch (status) {
+      case ASSET_STATUS.OPTIMO:
+        return darkMode ? "bg-green-700" : "bg-green-100 text-green-800";
+      case ASSET_STATUS.DETERIORADO:
+        return darkMode ? "bg-yellow-700" : "bg-yellow-100 text-yellow-800";
+      case ASSET_STATUS.EN_REPARACION:
+        return darkMode ? "bg-blue-700" : "bg-blue-100 text-blue-800";
+      case ASSET_STATUS.NO_UBICADO:
+        return darkMode ? "bg-red-700" : "bg-red-100 text-red-800";
+      case ASSET_STATUS.OTRO:
+        return darkMode ? "bg-gray-700" : "bg-gray-100 text-gray-800";
+      default:
+        return darkMode ? "bg-gray-700" : "bg-gray-100 text-gray-800";
+    }
   };
 
   // Clases condicionales para modo oscuro
   const themeClasses = {
-    bg: darkMode ? "bg-gray-900" : "bg-blue-50",
-    text: darkMode ? "text-gray-100" : "text-blue-900",
+    bg: darkMode ? "bg-gray-900" : COLOR_PALETTE.primary.light,
+    text: darkMode ? "text-gray-100" : COLOR_PALETTE.primary.dark,
     cardBg: darkMode ? "bg-gray-800" : "bg-white",
-    cardBorder: darkMode ? "border-gray-700" : "border-blue-200",
+    cardBorder: darkMode ? "border-gray-700" : `border-[${COLOR_PALETTE.primary.main}]`,
     modalBg: darkMode ? "bg-gray-800" : "bg-white",
     inputBg: darkMode ? "bg-gray-700 text-white" : "bg-white",
-    inputBorder: darkMode ? "border-gray-600" : "border-blue-300",
-    statsBg: darkMode ? "bg-gray-700" : "bg-blue-50",
-    statsText: darkMode ? "text-gray-100" : "text-blue-800",
+    inputBorder: darkMode ? "border-gray-600" : `border-[${COLOR_PALETTE.primary.main}]`,
+    statsBg: darkMode ? "bg-gray-700" : COLOR_PALETTE.primary.light,
+    statsText: darkMode ? "text-gray-100" : COLOR_PALETTE.primary.dark,
     womenColor: darkMode ? "pink-400" : "pink-600",
     menColor: darkMode ? "blue-400" : "blue-600",
     adminColor: darkMode ? "green-400" : "green-600",
@@ -708,89 +713,9 @@ const RoomMap = () => {
 
   return (
     <div className={`min-h-screen ${themeClasses.bg} p-4 md:p-6 relative transition-colors duration-300 overflow-hidden`}>
-      {/* Notificaciones */}
       <Toaster position="top-right" toastOptions={{
         className: darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800',
       }} />
-
-      {/* Video de fondo */}
-      <VideoFondo 
-        src="../assets/resifondo.mp4" 
-        opacity={videoOpacity} 
-        overlayOpacity={0.3}
-        playbackRate={0.7}
-      />
-
-      {/* Sidebar de navegación */}
-      <div className="fixed left-4 top-1/2 transform -translate-y-1/2 z-50 flex flex-col gap-2">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => scrollToSection('estudiantes-section')}
-          className={`p-3 rounded-full shadow-lg flex items-center justify-center ${
-            activeSection === 'estudiantes-section' 
-              ? darkMode 
-                ? 'bg-yellow-500 text-gray-900' 
-                : 'bg-yellow-400 text-white'
-              : darkMode 
-                ? 'bg-gray-700 text-white' 
-                : 'bg-white text-gray-800'
-          }`}
-          title="Habitaciones de Estudiantes"
-        >
-          <FiHome className="h-5 w-5" />
-        </motion.button>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => scrollToSection('personal-section')}
-          className={`p-3 rounded-full shadow-lg flex items-center justify-center ${
-            activeSection === 'personal-section' 
-              ? darkMode 
-                ? 'bg-yellow-500 text-gray-900' 
-                : 'bg-yellow-400 text-white'
-              : darkMode 
-                ? 'bg-gray-700 text-white' 
-                : 'bg-white text-gray-800'
-          }`}
-          title="Habitaciones de Personal"
-        >
-          <FiUser className="h-5 w-5" />
-        </motion.button>
-      </div>
-
-      {/* Controles de interfaz */}
-      <div className="fixed right-20 top-4 z-50 flex gap-2">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setVideoOpacity(prev => Math.min(prev + 0.1, 0.7))}
-          className={`p-2 rounded-full ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-800'} shadow-md`}
-          title="Aumentar opacidad del fondo"
-        >
-          <FiPlus className="h-5 w-5" />
-        </motion.button>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setVideoOpacity(prev => Math.max(prev - 0.1, 0.1))}
-          className={`p-2 rounded-full ${darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-800'} shadow-md`}
-          title="Reducir opacidad del fondo"
-        >
-          <FiMinus className="h-5 w-5" />
-        </motion.button>
-      </div>
-
-      {/* Botón modo oscuro */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={toggleDarkMode}
-        className={`fixed right-4 top-4 z-50 p-2 rounded-full shadow-lg ${darkMode ? 'bg-yellow-400 text-gray-900' : 'bg-gray-800 text-white'}`}
-        title={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-      >
-        {darkMode ? <FiSun className="h-6 w-6" /> : <FiMoon className="h-6 w-6" />}
-      </motion.button>
 
       {/* Loader */}
       <AnimatePresence>
@@ -817,7 +742,7 @@ const RoomMap = () => {
                 }}
               />
               <motion.p 
-                className={`mt-4 font-semibold ${darkMode ? 'text-yellow-400' : 'text-blue-800'}`}
+                className={`mt-4 font-semibold ${darkMode ? 'text-yellow-400' : `text-[${COLOR_PALETTE.primary.dark}]`}`}
                 animate={{ opacity: [0.6, 1, 0.6] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
@@ -828,11 +753,28 @@ const RoomMap = () => {
         )}
       </AnimatePresence>
 
+      {/* Dashboard de Pagos */}
+      <PaymentDashboard 
+        roomsData={roomsData} 
+        isOpen={showPaymentDashboard} 
+        onClose={() => setShowPaymentDashboard(false)}
+        darkMode={darkMode}
+      />
+
+      {/* Sistema de Búsqueda */}
+      <SearchSystem 
+        roomsData={roomsData} 
+        isOpen={showSearchSystem} 
+        onClose={() => setShowSearchSystem(false)}
+        darkMode={darkMode}
+        onRoomSelect={setSelectedRoom}
+      />
+
       {/* Contenido principal */}
       <div 
         className="relative z-10" 
         style={{ 
-          backgroundColor: darkMode ? 'rgba(17, 24, 39, 0.85)' : 'rgba(239, 246, 255, 0.85)',
+          backgroundColor: darkMode ? 'rgba(17, 24, 39, 0.85)' : `rgba(223, 234, 248, 0.85)`,
           borderRadius: '1rem',
           padding: '1.5rem'
         }}
@@ -845,10 +787,10 @@ const RoomMap = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            Mapa de Habitaciones de Estudiantes
+            RESIDENCIA UNIVERSITARIA ESTUDIANTIL
           </motion.h2>
           <motion.div 
-            className={`h-1 w-20 md:w-24 ${darkMode ? 'bg-yellow-500' : 'bg-yellow-500'} mx-auto`}
+            className={`h-1 w-20 md:w-24 ${darkMode ? `bg-[${COLOR_PALETTE.secondary.main}]` : `bg-[${COLOR_PALETTE.secondary.main}]`} mx-auto`}
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -886,7 +828,6 @@ const RoomMap = () => {
               >
                 <FiChevronLeft size={24} />
               </button>
-              
               <button
                 onClick={nextImage}
                 className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
@@ -940,7 +881,7 @@ const RoomMap = () => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className={`${themeClasses.cardBg} p-4 rounded-lg shadow-sm ${darkMode ? 'border-gray-700' : 'border-blue-200'}`}
               whileHover={{ y: -2 }}
               transition={{ duration: 0.2 }}
@@ -971,6 +912,7 @@ const RoomMap = () => {
         {/* Mapa de habitaciones de estudiantes */}
         <motion.div 
           id="estudiantes-section"
+          ref={estudiantesSectionRef}
           className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8"
           initial="hidden"
           animate="visible"
@@ -981,8 +923,8 @@ const RoomMap = () => {
           }}
         >
           {[
-            { title: "Edificio Damas", type: "Damas", color: themeClasses.womenColor }, 
-            { title: "Edificio Varones", type: "Varones", color: themeClasses.menColor }
+            { title: "Bloque Damas", type: "Damas", color: themeClasses.womenColor }, 
+            { title: "Bloque Varones", type: "Varones", color: themeClasses.menColor }
           ].map((building) => (
             <motion.div
               key={building.title}
@@ -990,16 +932,16 @@ const RoomMap = () => {
               variants={slideUp}
             >
               <div className="flex items-center mb-4 md:mb-6">
-                <div className={`h-6 md:h-8 w-1 ${darkMode ? 'bg-yellow-500' : 'bg-yellow-500'} mr-2 md:mr-3 rounded-full`}></div>
-                <h3 className={`text-lg md:text-xl font-semibold ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
+                <div className={`h-6 md:h-8 w-1 ${darkMode ? `bg-[${COLOR_PALETTE.secondary.main}]` : `bg-[${COLOR_PALETTE.secondary.main}]`} mr-2 md:mr-3 rounded-full`}></div>
+                <h3 className={`text-lg md:text-xl font-semibold ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`}`}>
                   {building.title}
                 </h3>
               </div>
 
               {FLOORS.map((floor) => (
                 <div key={floor.id} className="mb-4 md:mb-6">
-                  <h4 className={`${darkMode ? 'text-blue-300' : 'text-blue-700'} font-medium mb-2 md:mb-3 flex items-center`}>
-                    <span className={`inline-block w-2 h-4 md:h-6 ${darkMode ? 'bg-blue-400' : 'bg-blue-600'} mr-2 rounded-full`}></span>
+                  <h4 className={`${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} font-medium mb-2 md:mb-3 flex items-center`}>
+                    <span className={`inline-block w-2 h-4 md:h-6 ${darkMode ? 'bg-blue-400' : `bg-[${COLOR_PALETTE.primary.main}]`} mr-2 rounded-full`}></span>
                     {floor.name}
                   </h4>
                   <div className="grid grid-cols-2 gap-3 md:gap-4">
@@ -1016,63 +958,23 @@ const RoomMap = () => {
                               const roomNumber = counter++;
                               const occupantsCount = roomsData[roomId]?.students?.length || 0;
                               const globalNumber = getGlobalRoomNumber(floor.name, side, roomNumber);
+                              const hasPaymentIssue = hasPaymentIssues(roomId);
                               
-                              let bgColor = "";
-                              if (isOccupied) {
-                                bgColor = darkMode ? "bg-red-600 hover:bg-red-700" : "bg-red-500 hover:bg-red-600";
-                              } else {
-                                bgColor = building.type === "Damas" 
-                                  ? darkMode 
-                                    ? "bg-pink-800 hover:bg-pink-700" 
-                                    : "bg-pink-200 hover:bg-pink-300" 
-                                  : darkMode 
-                                    ? "bg-blue-800 hover:bg-blue-700" 
-                                    : "bg-blue-200 hover:bg-blue-300";
-                              }
-
                               return (
-                                <motion.button
+                                <RoomCard
                                   key={roomId}
-                                  type="button"
-                                  onClick={() => setSelectedRoom({
-                                    id: roomId,
-                                    type: roomType,
-                                    label: `${building.type}-${floor.name}`,
-                                    number: roomNumber,
-                                  })}
-                                  className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 border rounded-lg flex flex-col items-center justify-center text-xs font-semibold transition-all relative
-                                  ${bgColor} 
-                                  ${isOccupied 
-                                    ? darkMode 
-                                      ? 'border-red-800' 
-                                      : 'border-red-700' 
-                                    : building.type === "Damas" 
-                                      ? darkMode 
-                                        ? 'border-pink-600' 
-                                        : 'border-pink-400' 
-                                      : darkMode 
-                                        ? 'border-blue-600' 
-                                        : 'border-blue-400'}
-                                  hover:shadow-md hover:ring-1 md:hover:ring-2 ${darkMode ? 'hover:ring-yellow-500' : 'hover:ring-yellow-400'}`}
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                >
-                                  {isOccupied && occupantsCount > 0 && (
-                                    <motion.span 
-                                      className={`absolute -top-1 -right-1 ${darkMode ? 'bg-yellow-600' : 'bg-yellow-500'} text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center`}
-                                      initial={{ scale: 0 }}
-                                      animate={{ scale: 1 }}
-                                    >
-                                      {occupantsCount}
-                                    </motion.span>
-                                  )}
-                                  <span className={`text-[10px] sm:text-xs ${isOccupied ? 'text-white' : darkMode ? 'text-gray-100' : 'text-black'}`}>
-                                    {globalNumber}
-                                  </span>
-                                  <span className={`text-[8px] sm:text-[10px] mt-0.5 opacity-80 ${isOccupied ? 'text-white' : darkMode ? 'text-gray-300' : 'text-black'}`}>
-                                    {roomType === ROOM_TYPES.SHARED ? "(C)" : "(I)"}
-                                  </span>
-                                </motion.button>
+                                  roomId={roomId}
+                                  building={building}
+                                  floor={floor}
+                                  side={side}
+                                  roomNumber={roomNumber}
+                                  roomType={roomType}
+                                  isOccupied={isOccupied}
+                                  occupantsCount={occupantsCount}
+                                  hasPaymentIssue={hasPaymentIssue}
+                                  onSelect={setSelectedRoom}
+                                  darkMode={darkMode}
+                                />
                               );
                             })}
                           </div>
@@ -1094,10 +996,10 @@ const RoomMap = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            Mapa de Habitaciones de Personal Administrativo y Militares
+            RESIDENCIA DEL PERSONAL ADMINISTRATIVO Y MILITAR
           </motion.h2>
           <motion.div 
-            className={`h-1 w-20 md:w-24 ${darkMode ? 'bg-yellow-500' : 'bg-yellow-500'} mx-auto`}
+            className={`h-1 w-20 md:w-24 ${darkMode ? `bg-[${COLOR_PALETTE.secondary.main}]` : `bg-[${COLOR_PALETTE.secondary.main}]`} mx-auto`}
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -1110,7 +1012,7 @@ const RoomMap = () => {
             className={`${themeClasses.cardBg} p-4 rounded-lg shadow-sm ${darkMode ? 'border-gray-700' : 'border-green-200'}`}
             whileHover={{ y: -2 }}
             transition={{ duration: 0.2 }}
-          >
+            >
             <h3 className={`text-lg font-semibold ${darkMode ? 'text-green-300' : 'text-green-700'} mb-3`}>Estadísticas Administrativas</h3>
             <div className="grid grid-cols-4 gap-3 text-center">
               <div className={`${darkMode ? 'bg-gray-700' : 'bg-green-50'} p-2 rounded-lg`}>
@@ -1128,7 +1030,7 @@ const RoomMap = () => {
               <div className={`${darkMode ? 'bg-gray-700' : 'bg-green-50'} p-2 rounded-lg`}>
                 <p className={`text-xs md:text-sm ${darkMode ? 'text-green-200' : 'text-green-600'}`}>Ocupación</p>
                 <p className={`text-lg md:text-xl font-bold ${darkMode ? 'text-green-100' : 'text-green-800'}`}>{adminStats.occupancyRate}%</p>
-              </div>
+                </div>
             </div>
           </motion.div>
 
@@ -1162,6 +1064,7 @@ const RoomMap = () => {
         {/* Mapa de habitaciones administrativas */}
         <motion.div 
           id="personal-section"
+          ref={personalSectionRef}
           className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mt-8"
           initial="hidden"
           animate="visible"
@@ -1172,8 +1075,8 @@ const RoomMap = () => {
           }}
         >
           {[
-            { title: "Edificio Administrativo", type: "Admin", color: themeClasses.adminColor }, 
-            { title: "Edificio Militar", type: "Military", color: themeClasses.militaryColor }
+            { title: "Bloque Administrativo", type: "Admin", color: themeClasses.adminColor }, 
+            { title: "Bloque Militar", type: "Military", color: themeClasses.militaryColor }
           ].map((building) => (
             <motion.div
               key={building.title}
@@ -1181,16 +1084,16 @@ const RoomMap = () => {
               variants={slideUp}
             >
               <div className="flex items-center mb-4 md:mb-6">
-                <div className={`h-6 md:h-8 w-1 ${darkMode ? 'bg-yellow-500' : 'bg-yellow-500'} mr-2 md:mr-3 rounded-full`}></div>
-                <h3 className={`text-lg md:text-xl font-semibold ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
+                <div className={`h-6 md:h-8 w-1 ${darkMode ? `bg-[${COLOR_PALETTE.secondary.main}]` : `bg-[${COLOR_PALETTE.secondary.main}]`} mr-2 md:mr-3 rounded-full`}></div>
+                <h3 className={`text-lg md:text-xl font-semibold ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`}`}>
                   {building.title}
                 </h3>
               </div>
 
               {ADMIN_FLOORS.map((floor) => (
                 <div key={floor.id} className="mb-4 md:mb-6">
-                  <h4 className={`${darkMode ? 'text-blue-300' : 'text-blue-700'} font-medium mb-2 md:mb-3 flex items-center`}>
-                    <span className={`inline-block w-2 h-4 md:h-6 ${darkMode ? 'bg-blue-400' : 'bg-blue-600'} mr-2 rounded-full`}></span>
+                  <h4 className={`${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} font-medium mb-2 md:mb-3 flex items-center`}>
+                    <span className={`inline-block w-2 h-4 md:h-6 ${darkMode ? 'bg-blue-400' : `bg-[${COLOR_PALETTE.primary.main}]`} mr-2 rounded-full`}></span>
                     {floor.name}
                   </h4>
                   <div className="grid grid-cols-2 gap-3 md:gap-4">
@@ -1208,62 +1111,21 @@ const RoomMap = () => {
                               const staffCount = adminRoomsData[roomId]?.staff?.length || 0;
                               const globalNumber = getGlobalRoomNumber(floor.name, side, roomNumber);
                               
-                              let bgColor = "";
-                              if (isOccupied) {
-                                bgColor = darkMode ? "bg-red-600 hover:bg-red-700" : "bg-red-500 hover:bg-red-600";
-                              } else {
-                                bgColor = building.type === "Admin" 
-                                  ? darkMode 
-                                    ? "bg-green-800 hover:bg-green-700" 
-                                    : "bg-green-200 hover:bg-green-300" 
-                                  : darkMode 
-                                    ? "bg-purple-800 hover:bg-purple-700" 
-                                    : "bg-purple-200 hover:bg-purple-300";
-                              }
-
                               return (
-                                <motion.button
+                                <RoomCard
                                   key={roomId}
-                                  type="button"
-                                  onClick={() => setSelectedAdminRoom({
-                                    id: roomId,
-                                    type: roomType,
-                                    label: `${building.type}-${floor.name}`,
-                                    number: roomNumber,
-                                  })}
-                                  className={`w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 border rounded-lg flex flex-col items-center justify-center text-xs font-semibold transition-all relative
-                                  ${bgColor} 
-                                  ${isOccupied 
-                                    ? darkMode 
-                                      ? 'border-red-800' 
-                                      : 'border-red-700' 
-                                    : building.type === "Admin" 
-                                      ? darkMode 
-                                        ? 'border-green-600' 
-                                        : 'border-green-400' 
-                                      : darkMode 
-                                        ? 'border-purple-600' 
-                                        : 'border-purple-400'}
-                                  hover:shadow-md hover:ring-1 md:hover:ring-2 ${darkMode ? 'hover:ring-yellow-500' : 'hover:ring-yellow-400'}`}
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                >
-                                  {isOccupied && staffCount > 0 && (
-                                    <motion.span 
-                                      className={`absolute -top-1 -right-1 ${darkMode ? 'bg-yellow-600' : 'bg-yellow-500'} text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center`}
-                                      initial={{ scale: 0 }}
-                                      animate={{ scale: 1 }}
-                                    >
-                                      {staffCount}
-                                    </motion.span>
-                                  )}
-                                  <span className={`text-[10px] sm:text-xs ${isOccupied ? 'text-white' : darkMode ? 'text-gray-100' : 'text-black'}`}>
-                                    {globalNumber}
-                                  </span>
-                                  <span className={`text-[8px] sm:text-[10px] mt-0.5 opacity-80 ${isOccupied ? 'text-white' : darkMode ? 'text-gray-300' : 'text-black'}`}>
-                                    {roomType === ADMIN_ROOM_TYPES.SHARED ? "(C)" : "(I)"}
-                                  </span>
-                                </motion.button>
+                                  roomId={roomId}
+                                  building={building}
+                                  floor={floor}
+                                  side={side}
+                                  roomNumber={roomNumber}
+                                  roomType={roomType}
+                                  isOccupied={isOccupied}
+                                  occupantsCount={staffCount}
+                                  hasPaymentIssue={false}
+                                  onSelect={setSelectedAdminRoom}
+                                  darkMode={darkMode}
+                                />
                               );
                             })}
                           </div>
@@ -1278,542 +1140,518 @@ const RoomMap = () => {
         </motion.div>
 
         {/* Modal de habitación de estudiantes */}
-        <AnimatePresence>
+        <RoomModal
+          isOpen={!!selectedRoom}
+          onClose={() => setSelectedRoom(null)}
+          title="Información del Cuarto"
+          editMode={false}
+          onToggleEdit={() => {}}
+          darkMode={darkMode}
+          roomInfo={selectedRoom ? {
+            ...selectedRoom,
+            isOccupied: roomsStatus[selectedRoom.id],
+            price: selectedRoom.type === ROOM_TYPES.INDIVIDUAL ? ROOM_PRICES.INDIVIDUAL : ROOM_PRICES.SHARED
+          } : null}
+          onToggleOccupied={() => toggleOccupied(selectedRoom?.id)}
+          onClearRoom={() => clearRoomData(selectedRoom?.id)}
+          onSubmit={handleSubmit}
+          showSubmitButton={false}
+        >
           {selectedRoom && (
-            <motion.div 
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <motion.div 
-                className={`${themeClasses.modalBg} rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-auto`}
-                style={{ borderTop: "4px solid #F59E0B" }}
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 20, opacity: 0 }}
-              >
-                <div className="p-4 md:p-6">
-                  <div className="flex justify-between items-start mb-3 md:mb-4">
-                    <div>
-                      <h2 className={`text-xl md:text-2xl font-bold ${darkMode ? 'text-yellow-400' : 'text-blue-900'}`}>
-                        Información del Cuarto
-                        {editMode && <span className="text-sm ml-2 text-yellow-600">(Editando)</span>}
-                      </h2>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 md:gap-x-4 md:gap-y-2 mt-1 md:mt-2">
-                        <p className={`text-sm md:text-base ${darkMode ? 'text-gray-300' : 'text-blue-800'}`}>
-                          <span className="font-medium">Número:</span>{" "}
-                          <span className="font-semibold">
-                            {selectedRoom.label}-{selectedRoom.number}
-                          </span>
-                        </p>
-                        <p className={`text-sm md:text-base ${darkMode ? 'text-gray-300' : 'text-blue-800'}`}>
-                          <span className="font-medium">Tipo:</span>{" "}
-                          <span className="font-semibold">{selectedRoom.type}</span>
-                        </p>
-                        <p className={`text-sm md:text-base ${darkMode ? 'text-gray-300' : 'text-blue-800'}`}>
-                          <span className="font-medium">Estado:</span>{" "}
-                          <span className={`font-semibold ${
-                            roomsStatus[selectedRoom.id] 
-                              ? "text-yellow-500" 
-                              : "text-green-500"
-                          }`}>
-                            {roomsStatus[selectedRoom.id] ? "Ocupado" : "Disponible"}
-                          </span>
-                        </p>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+                {studentsForm.map((student, idx) => (
+                  <div key={student.id} className={`border ${darkMode ? 'border-gray-700' : `border-[${COLOR_PALETTE.primary.main}]`} rounded-lg p-3 md:p-4 ${darkMode ? 'bg-gray-700' : COLOR_PALETTE.primary.light}`}>
+                    <h3 className={`font-semibold text-sm md:text-base ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-2 md:mb-3 flex items-center`}>
+                      <span className={`inline-block w-2 h-2 md:w-3 md:h-3 ${darkMode ? `bg-[${COLOR_PALETTE.secondary.main}]` : `bg-[${COLOR_PALETTE.secondary.main}]`} rounded-full mr-1 md:mr-2`}></span>
+                      Estudiante {idx + 1}
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Nombre Completo</label>
+                        <input
+                          value={student.name}
+                          onChange={(e) => handleInputChange(idx, "name", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          required={idx === 0 && !roomsStatus[selectedRoom.id]}
+                          disabled={true}
+                        />
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => setEditMode(!editMode)}
-                        className={`p-2 rounded-full ${editMode ? 'bg-yellow-100 text-yellow-800' : darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}
-                        title={editMode ? "Cancelar edición" : "Editar información"}
-                      >
-                        <FiEdit2 />
-                      </button>
-                      <button 
-                        onClick={() => setSelectedRoom(null)}
-                        className={`p-2 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                        title="Cerrar"
-                      >
-                        <FiX />
-                      </button>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
-                      {studentsForm.map((student, idx) => (
-                        <div key={student.id} className={`border ${darkMode ? 'border-gray-700' : 'border-blue-200'} rounded-lg p-3 md:p-4 ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}`}>
-                          <h3 className={`font-semibold text-sm md:text-base ${darkMode ? 'text-blue-300' : 'text-blue-800'} mb-2 md:mb-3 flex items-center`}>
-                            <span className={`inline-block w-2 h-2 md:w-3 md:h-3 ${darkMode ? 'bg-yellow-500' : 'bg-yellow-500'} rounded-full mr-1 md:mr-2`}></span>
-                            Estudiante {idx + 1}
-                          </h3>
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Cédula de Identidad</label>
+                        <input
+                          value={student.ci}
+                          onChange={(e) => handleInputChange(idx, "ci", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          required={idx === 0 && !roomsStatus[selectedRoom.id]}
+                          disabled={true}
+                        />
+                      </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                            <div>
-                              <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-700'} mb-1`}>Nombre</label>
-                              <input
-                                value={student.name}
-                                onChange={(e) => handleInputChange(idx, "name", e.target.value)}
-                                className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
-                                required={idx === 0 && !roomsStatus[selectedRoom.id]}
-                                disabled={!editMode}
-                              />
-                            </div>
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Celular</label>
+                        <input
+                          value={student.cellphone}
+                          onChange={(e) => handleInputChange(idx, "cellphone", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          disabled={true}
+                        />
+                      </div>
 
-                            <div>
-                              <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-700'} mb-1`}>Semestre</label>
-                              <input
-                                value={student.semester}
-                                onChange={(e) => handleInputChange(idx, "semester", e.target.value)}
-                                className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
-                                required={idx === 0 && !roomsStatus[selectedRoom.id]}
-                                disabled={!editMode}
-                              />
-                            </div>
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Carrera</label>
+                        <select
+                          value={student.career}
+                          onChange={(e) => handleInputChange(idx, "career", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          disabled={true}
+                        >
+                          <option value="">Seleccione una carrera</option>
+                          {CAREERS.map(career => (
+                            <option key={career} value={career}>{career}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                            <div className="md:col-span-2">
-                              <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-700'} mb-1`}>Foto</label>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handlePhotoChange(idx, e.target.files[0])}
-                                className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
-                                disabled={!editMode}
-                              />
-                              {student.photo && (
-                                <div className="mt-2 flex items-center gap-2">
-                                  <img
-                                    src={student.photo}
-                                    alt="Foto estudiante"
-                                    className="w-12 h-12 md:w-16 md:h-16 object-cover rounded border border-blue-200"
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Semestre</label>
+                        <select
+                          value={student.semester}
+                          onChange={(e) => handleInputChange(idx, "semester", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          required={idx === 0 && !roomsStatus[selectedRoom.id]}
+                          disabled={true}
+                        >
+                          <option value="">Seleccione semestre</option>
+                          <option value="Primer">Primer Semestre</option>
+                          <option value="Segundo">Segundo Semestre</option>
+                          <option value="Tercer">Tercer Semestre</option>
+                          <option value="Cuarto">Cuarto Semestre</option>
+                          <option value="Quinto">Quinto Semestre</option>
+                          <option value="Sexto">Sexto Semestre</option>
+                          <option value="Séptimo">Séptimo Semestre</option>
+                          <option value="Octavo">Octavo Semestre</option>
+                          <option value="Noveno">Noveno Semestre</option>
+                          <option value="Décimo">Décimo Semestre</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Código</label>
+                        <input
+                          value={student.code}
+                          onChange={(e) => handleInputChange(idx, "code", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          disabled={true}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>N° Habitación</label>
+                        <input
+                          value={student.roomNumber}
+                          onChange={(e) => handleInputChange(idx, "roomNumber", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          disabled={true}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Tipo de Habitación</label>
+                        <select
+                          value={student.roomType}
+                          onChange={(e) => handleInputChange(idx, "roomType", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          disabled={true}
+                        >
+                          <option value={ROOM_TYPES.INDIVIDUAL}>Individual</option>
+                          <option value={ROOM_TYPES.SHARED}>Compartido</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Nombre del Tutor</label>
+                        <input
+                          value={student.tutorName}
+                          onChange={(e) => handleInputChange(idx, "tutorName", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          disabled={true}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Celular del Tutor</label>
+                        <input
+                          value={student.tutorCellphone}
+                          onChange={(e) => handleInputChange(idx, "tutorCellphone", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          disabled={true}
+                        />
+                      </div>
+
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Fecha de Ingreso</label>
+                        <input
+                          type="date"
+                          value={student.admissionDate}
+                          onChange={(e) => handleInputChange(idx, "admissionDate", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          disabled={true}
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Observación</label>
+                        <textarea
+                          value={student.observation}
+                          onChange={(e) => handleInputChange(idx, "observation", e.target.value)}
+                          rows={2}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          disabled={true}
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Foto</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handlePhotoChange(idx, e.target.files[0])}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
+                          disabled={true}
+                        />
+                        {student.photo && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <img
+                              src={student.photo}
+                              alt="Foto estudiante"
+                              className="w-12 h-12 md:w-16 md:h-16 object-cover rounded border border-blue-200"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Sistema de Pagos */}
+                      <div className="md:col-span-2">
+                        <PaymentHistory 
+                          paymentHistory={student.paymentHistory || {}} 
+                          onPaymentUpdate={(year, month, data) => handlePaymentUpdate(idx, year, month, data)}
+                          editable={false}
+                          roomType={selectedRoom.type === ROOM_TYPES.INDIVIDUAL ? 'INDIVIDUAL' : 'SHARED'}
+                          darkMode={darkMode}
+                          studentId={student.id}
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <div className="flex justify-between items-center">
+                          <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Activos</label>
+                        </div>
+                        <div className="space-y-2 md:space-y-3">
+                          {student.assets.map((asset, assetIdx) => (
+                            <div key={asset.id} className={`p-2 rounded-lg ${darkMode ? 'bg-gray-600' : 'bg-blue-100'}`}>
+                              <div className="grid grid-cols-12 gap-2 md:gap-3 items-center mb-2">
+                                <div className="col-span-5">
+                                  <input
+                                    placeholder="Nombre activo"
+                                    value={asset.name}
+                                    onChange={(e) => handleAssetChange(idx, assetIdx, "name", e.target.value)}
+                                    className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
+                                    disabled={true}
                                   />
-                                  {editMode && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleInputChange(idx, "photo", "")}
-                                      className="text-red-500 text-sm"
-                                    >
-                                      Eliminar
-                                    </button>
+                                </div>
+                                <div className="col-span-5">
+                                  <input
+                                    placeholder="Código"
+                                    value={asset.code}
+                                    onChange={(e) => handleAssetChange(idx, assetIdx, "code", e.target.value)}
+                                    className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
+                                    disabled={true}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                                <div>
+                                  <label className={`block text-xs font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Estado</label>
+                                  <select
+                                    value={asset.status}
+                                    onChange={(e) => handleAssetChange(idx, assetIdx, "status", e.target.value)}
+                                    className={`w-full px-2 py-1 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs ${themeClasses.inputBg}`}
+                                    disabled={true}
+                                  >
+                                    {Object.values(ASSET_STATUS).map(status => (
+                                      <option key={status} value={status}>{status}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className={`block text-xs font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>
+                                    {asset.status === ASSET_STATUS.OTRO ? 'Descripción' : 'Observaciones'}
+                                  </label>
+                                  <input
+                                    placeholder={asset.status === ASSET_STATUS.OTRO ? 'Describe el estado' : 'Observaciones adicionales'}
+                                    value={asset.description}
+                                    onChange={(e) => handleAssetChange(idx, assetIdx, "description", e.target.value)}
+                                    className={`w-full px-2 py-1 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs ${themeClasses.inputBg}`}
+                                    disabled={true}
+                                  />
+                                </div>
+                              </div>
+                              
+                              {asset.status && (
+                                <div className={`mt-2 px-2 py-1 rounded text-xs font-medium text-center ${getStatusColor(asset.status)}`}>
+                                  {asset.status}
+                                  {asset.description && asset.status !== ASSET_STATUS.OPTIMO && (
+                                    <span className="ml-1">: {asset.description}</span>
                                   )}
                                 </div>
                               )}
                             </div>
-
-                            <div className="md:col-span-2">
-                              <div className="flex justify-between items-center">
-                                <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-700'} mb-1`}>Activos</label>
-                                {editMode && (
-                                  <button
-                                    type="button"
-                                    onClick={() => addAsset(idx)}
-                                    className="text-xs flex items-center gap-1 text-blue-500 hover:text-blue-700"
-                                  >
-                                    <FiPlus size={12} /> Agregar activo
-                                  </button>
-                                )}
-                              </div>
-                              <div className="space-y-1 md:space-y-2">
-                                {student.assets.map((asset, assetIdx) => (
-                                  <div key={asset.id} className="grid grid-cols-12 gap-2 md:gap-3 items-center">
-                                    <div className="col-span-5">
-                                      <input
-                                        placeholder="Nombre activo"
-                                        value={asset.name}
-                                        onChange={(e) => handleAssetChange(idx, assetIdx, "name", e.target.value)}
-                                        className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
-                                        disabled={!editMode}
-                                      />
-                                    </div>
-                                    <div className="col-span-5">
-                                      <input
-                                        placeholder="Código"
-                                        value={asset.code}
-                                        onChange={(e) => handleAssetChange(idx, assetIdx, "code", e.target.value)}
-                                        className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
-                                        disabled={!editMode}
-                                      />
-                                    </div>
-                                    {editMode && (
-                                      <div className="col-span-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => removeAsset(idx, assetIdx)}
-                                          className="text-red-500 hover:text-red-700 p-1"
-                                        >
-                                          <FiX size={16} />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
+                          ))}
                         </div>
-                      ))}
-
-                      {editMode && (
-                        <div className="flex flex-wrap justify-between items-center gap-2 md:gap-3 pt-3 md:pt-4 border-t border-blue-200">
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => toggleOccupied(selectedRoom.id)}
-                              className={`px-3 py-1 md:px-4 md:py-2 rounded font-medium text-sm md:text-base ${
-                                roomsStatus[selectedRoom.id]
-                                  ? "bg-yellow-400 hover:bg-yellow-500 text-blue-900"
-                                  : darkMode 
-                                    ? "bg-blue-700 hover:bg-blue-600 text-white" 
-                                    : "bg-blue-200 hover:bg-blue-300 text-blue-800"
-                              } transition-colors`}
-                            >
-                              {roomsStatus[selectedRoom.id] ? "Marcar Disponible" : "Marcar Ocupado"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => clearRoomData(selectedRoom.id)}
-                              className={`px-3 py-1 md:px-4 md:py-2 rounded font-medium text-sm md:text-base ${
-                                darkMode 
-                                  ? "bg-red-700 hover:bg-red-600 text-white" 
-                                  : "bg-red-200 hover:bg-red-300 text-red-800"
-                              } transition-colors flex items-center gap-1`}
-                            >
-                              <FiTrash2 /> Vaciar
-                            </button>
-                          </div>
-
-                          <div className="flex gap-2 md:gap-3">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedRoom(null);
-                                setEditMode(false);
-                              }}
-                              className={`px-3 py-1 md:px-4 md:py-2 ${darkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'} rounded font-medium text-sm md:text-base transition-colors`}
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              type="submit"
-                              className={`px-3 py-1 md:px-4 md:py-2 flex items-center gap-1 ${darkMode ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-700 hover:bg-blue-800'} text-white rounded font-medium text-sm md:text-base transition-colors`}
-                            >
-                              <FiSave /> Guardar
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </form>
-
-                    <div className={`border ${darkMode ? 'border-gray-700' : 'border-blue-200'} rounded-lg p-4 ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}`}>
-                      <h3 className={`font-semibold text-sm md:text-base ${darkMode ? 'text-blue-300' : 'text-blue-800'} mb-3 flex items-center`}>
-                        <span className={`inline-block w-2 h-2 md:w-3 md:h-3 ${darkMode ? 'bg-yellow-500' : 'bg-yellow-500'} rounded-full mr-1 md:mr-2`}></span>
-                        Código QR de la Habitación
-                      </h3>
-                      <div className="flex flex-col items-center">
-                        <div className="bg-white p-4 rounded-lg mb-4">
-                          <QRCode 
-                            value={generateRoomQR(selectedRoom.id)} 
-                            size={180}
-                            level="H"
-                            className="QRCode"
-                          />
-                        </div>
-                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'} text-center mb-4`}>
-                          Escanea este código para acceder rápidamente a la información de esta habitación
-                        </p>
-                        <button
-                          onClick={handleDownloadQR}
-                          className={`px-3 py-1 text-sm rounded flex items-center gap-1 mx-auto ${darkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}
-                        >
-                          <FiDownload className="inline" /> Descargar QR
-                        </button>
                       </div>
                     </div>
                   </div>
+                ))}
+              </form>
+
+              <div className={`border ${darkMode ? 'border-gray-700' : `border-[${COLOR_PALETTE.primary.main}]`} rounded-lg p-4 ${darkMode ? 'bg-gray-700' : COLOR_PALETTE.primary.light}`}>
+                <h3 className={`font-semibold text-sm md:text-base ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-3 flex items-center`}>
+                  <span className={`inline-block w-2 h-2 md:w-3 md:h-3 ${darkMode ? `bg-[${COLOR_PALETTE.secondary.main}]` : `bg-[${COLOR_PALETTE.secondary.main}]`} rounded-full mr-1 md:mr-2`}></span>
+                  Información de la Habitación
+                </h3>
+                <div className="flex flex-col items-center">
+                  <div className="bg-white p-4 rounded-lg mb-4 flex items-center justify-center h-48 w-48">
+                    <div className="text-center">
+                      <div className={`text-6xl font-bold ${roomsStatus[selectedRoom.id] ? 'text-red-500' : 'text-green-500'}`}>
+                        {selectedRoom.number}
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2">
+                        {selectedRoom.label}
+                      </p>
+                      <p className={`text-xs font-medium mt-1 ${roomsStatus[selectedRoom.id] ? 'text-red-500' : 'text-green-500'}`}>
+                        {roomsStatus[selectedRoom.id] ? 'OCUPADA' : 'DISPONIBLE'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {selectedRoom.type} - Bs. {selectedRoom.type === ROOM_TYPES.INDIVIDUAL ? ROOM_PRICES.INDIVIDUAL : ROOM_PRICES.SHARED}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="w-full mt-4">
+                    <h4 className={`font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-2`}>
+                      Resumen de Pagos
+                    </h4>
+                    <div className={`p-3 rounded-lg ${darkMode ? 'bg-gray-600' : 'bg-blue-100'}`}>
+                      {studentsForm.filter(student => student.name.trim() !== "").map((student, idx) => {
+                        const debt = calculateStudentDebt(student, selectedRoom.type === ROOM_TYPES.INDIVIDUAL ? 'INDIVIDUAL' : 'SHARED');
+                        return (
+                          <div key={student.id} className="mb-2 last:mb-0">
+                            <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                              {student.name}: <span className={debt > 0 ? "text-red-500 font-medium" : "text-green-500 font-medium"}>
+                                Bs. {debt} {debt > 0 ? "(Deuda)" : "(Al día)"}
+                              </span>
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
           )}
-        </AnimatePresence>
+        </RoomModal>
 
         {/* Modal de habitación administrativa */}
-        <AnimatePresence>
+        <RoomModal
+          isOpen={!!selectedAdminRoom}
+          onClose={() => setSelectedAdminRoom(null)}
+          title="Información del Cuarto"
+          editMode={false}
+          onToggleEdit={() => {}}
+          darkMode={darkMode}
+          roomInfo={selectedAdminRoom ? {
+            ...selectedAdminRoom,
+            isOccupied: adminRoomsStatus[selectedAdminRoom.id]
+          } : null}
+          onToggleOccupied={() => toggleAdminOccupied(selectedAdminRoom?.id)}
+          onClearRoom={() => clearAdminRoomData(selectedAdminRoom?.id)}
+          onSubmit={handleAdminSubmit}
+          showSubmitButton={false}
+        >
           {selectedAdminRoom && (
-            <motion.div 
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <motion.div 
-                className={`${themeClasses.modalBg} rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-3xl max-h-[90vh] overflow-y-auto`}
-                style={{ borderTop: "4px solid #F59E0B" }}
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 20, opacity: 0 }}
-              >
-                <div className="p-4 md:p-6">
-                  <div className="flex justify-between items-start mb-3 md:mb-4">
-                    <div>
-                      <h2 className={`text-xl md:text-2xl font-bold ${darkMode ? 'text-yellow-400' : 'text-blue-900'}`}>
-                        Información del Cuarto
-                        {editMode && <span className="text-sm ml-2 text-yellow-600">(Editando)</span>}
-                      </h2>
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 md:gap-x-4 md:gap-y-2 mt-1 md:mt-2">
-                        <p className={`text-sm md:text-base ${darkMode ? 'text-gray-300' : 'text-blue-800'}`}>
-                          <span className="font-medium">Número:</span>{" "}
-                          <span className="font-semibold">
-                            {selectedAdminRoom.label}-{selectedAdminRoom.number}
-                          </span>
-                        </p>
-                        <p className={`text-sm md:text-base ${darkMode ? 'text-gray-300' : 'text-blue-800'}`}>
-                          <span className="font-medium">Tipo:</span>{" "}
-                          <span className="font-semibold">{selectedAdminRoom.type}</span>
-                        </p>
-                        <p className={`text-sm md:text-base ${darkMode ? 'text-gray-300' : 'text-blue-800'}`}>
-                          <span className="font-medium">Estado:</span>{" "}
-                          <span className={`font-semibold ${
-                            adminRoomsStatus[selectedAdminRoom.id] 
-                              ? "text-yellow-500" 
-                              : "text-green-500"
-                          }`}>
-                            {adminRoomsStatus[selectedAdminRoom.id] ? "Ocupado" : "Disponible"}
-                          </span>
-                        </p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <form onSubmit={handleAdminSubmit} className="space-y-4 md:space-y-6">
+                {staffForm.map((staff, idx) => (
+                  <div key={staff.id} className={`border ${darkMode ? 'border-gray-700' : `border-[${COLOR_PALETTE.primary.main}]`} rounded-lg p-3 md:p-4 ${darkMode ? 'bg-gray-700' : COLOR_PALETTE.primary.light}`}>
+                    <h3 className={`font-semibold text-sm md:text-base ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-2 md:mb-3 flex items-center`}>
+                      <span className={`inline-block w-2 h-2 md:w-3 md:h-3 ${darkMode ? `bg-[${COLOR_PALETTE.secondary.main}]` : `bg-[${COLOR_PALETTE.secondary.main}]`} rounded-full mr-1 md:mr-2`}></span>
+                      {selectedAdminRoom.label.startsWith('Admin') ? 'Administrativo' : 'Militar'} {idx + 1}
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Nombre</label>
+                        <input
+                          value={staff.name}
+                          onChange={(e) => handleStaffInputChange(idx, "name", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          required={idx === 0 && !adminRoomsStatus[selectedAdminRoom.id]}
+                          disabled={true}
+                        />
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => setEditMode(!editMode)}
-                        className={`p-2 rounded-full ${editMode ? 'bg-yellow-100 text-yellow-800' : darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}
-                        title={editMode ? "Cancelar edición" : "Editar información"}
-                      >
-                        <FiEdit2 />
-                      </button>
-                      <button 
-                        onClick={() => setSelectedAdminRoom(null)}
-                        className={`p-2 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                        title="Cerrar"
-                      >
-                        <FiX />
-                      </button>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <form onSubmit={handleAdminSubmit} className="space-y-4 md:space-y-6">
-                      {staffForm.map((staff, idx) => (
-                        <div key={staff.id} className={`border ${darkMode ? 'border-gray-700' : 'border-blue-200'} rounded-lg p-3 md:p-4 ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}`}>
-                          <h3 className={`font-semibold text-sm md:text-base ${darkMode ? 'text-blue-300' : 'text-blue-800'} mb-2 md:mb-3 flex items-center`}>
-                            <span className={`inline-block w-2 h-2 md:w-3 md:h-3 ${darkMode ? 'bg-yellow-500' : 'bg-yellow-500'} rounded-full mr-1 md:mr-2`}></span>
-                            {selectedAdminRoom.label.startsWith('Admin') ? 'Administrativo' : 'Militar'} {idx + 1}
-                          </h3>
+                      <div>
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>
+                          {selectedAdminRoom.label.startsWith('Admin') ? 'Cargo' : 'Rango'}
+                        </label>
+                        <input
+                          value={staff.position}
+                          onChange={(e) => handleStaffInputChange(idx, "position", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          required={idx === 0 && !adminRoomsStatus[selectedAdminRoom.id]}
+                          disabled={true}
+                        />
+                      </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                            <div>
-                              <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-700'} mb-1`}>Nombre</label>
-                              <input
-                                value={staff.name}
-                                onChange={(e) => handleStaffInputChange(idx, "name", e.target.value)}
-                                className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
-                                required={idx === 0 && !adminRoomsStatus[selectedAdminRoom.id]}
-                                disabled={!editMode}
-                              />
-                            </div>
+                      <div className="md:col-span-2">
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Departamento</label>
+                        <input
+                          value={staff.department}
+                          onChange={(e) => handleStaffInputChange(idx, "department", e.target.value)}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
+                          required={idx === 0 && !adminRoomsStatus[selectedAdminRoom.id]}
+                          disabled={true}
+                        />
+                      </div>
 
-                            <div>
-                              <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-700'} mb-1`}>
-                                {selectedAdminRoom.label.startsWith('Admin') ? 'Cargo' : 'Rango'}
-                              </label>
-                              <input
-                                value={staff.position}
-                                onChange={(e) => handleStaffInputChange(idx, "position", e.target.value)}
-                                className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
-                                required={idx === 0 && !adminRoomsStatus[selectedAdminRoom.id]}
-                                disabled={!editMode}
-                              />
-                            </div>
+                      <div className="md:col-span-2">
+                        <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Foto</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleStaffPhotoChange(idx, e.target.files[0])}
+                          className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
+                          disabled={true}
+                        />
+                        {staff.photo && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <img
+                              src={staff.photo}
+                              alt="Foto del personal"
+                              className="w-12 h-12 md:w-16 md:h-16 object-cover rounded border border-blue-200"
+                            />
+                          </div>
+                        )}
+                      </div>
 
-                            <div className="md:col-span-2">
-                              <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-700'} mb-1`}>Departamento</label>
-                              <input
-                                value={staff.department}
-                                onChange={(e) => handleStaffInputChange(idx, "department", e.target.value)}
-                                className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-sm md:text-base ${themeClasses.inputBg}`}
-                                required={idx === 0 && !adminRoomsStatus[selectedAdminRoom.id]}
-                                disabled={!editMode}
-                              />
-                            </div>
-
-                            <div className="md:col-span-2">
-                              <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-700'} mb-1`}>Foto</label>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleStaffPhotoChange(idx, e.target.files[0])}
-                                className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
-                                disabled={!editMode}
-                              />
-                              {staff.photo && (
-                                <div className="mt-2 flex items-center gap-2">
-                                  <img
-                                    src={staff.photo}
-                                    alt="Foto del personal"
-                                    className="w-12 h-12 md:w-16 md:h-16 object-cover rounded border border-blue-200"
+                      <div className="md:col-span-2">
+                        <div className="flex justify-between items-center">
+                          <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Activos</label>
+                        </div>
+                        <div className="space-y-2 md:space-y-3">
+                          {staff.assets.map((asset, assetIdx) => (
+                            <div key={asset.id} className={`p-2 rounded-lg ${darkMode ? 'bg-gray-600' : 'bg-blue-100'}`}>
+                              <div className="grid grid-cols-12 gap-2 md:gap-3 items-center mb-2">
+                                <div className="col-span-5">
+                                  <input
+                                    placeholder="Nombre activo"
+                                    value={asset.name}
+                                    onChange={(e) => handleStaffAssetChange(idx, assetIdx, "name", e.target.value)}
+                                    className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
+                                    disabled={true}
                                   />
-                                  {editMode && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleStaffInputChange(idx, "photo", "")}
-                                      className="text-red-500 text-sm"
-                                    >
-                                      Eliminar
-                                    </button>
+                                </div>
+                                <div className="col-span-5">
+                                  <input
+                                    placeholder="Código"
+                                    value={asset.code}
+                                    onChange={(e) => handleStaffAssetChange(idx, assetIdx, "code", e.target.value)}
+                                    className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
+                                    disabled={true}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                                <div>
+                                  <label className={`block text-xs font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>Estado</label>
+                                  <select
+                                    value={asset.status}
+                                    onChange={(e) => handleStaffAssetChange(idx, assetIdx, "status", e.target.value)}
+                                    className={`w-full px-2 py-1 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs ${themeClasses.inputBg}`}
+                                    disabled={true}
+                                  >
+                                    {Object.values(ASSET_STATUS).map(status => (
+                                      <option key={status} value={status}>{status}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className={`block text-xs font-medium ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-1`}>
+                                    {asset.status === ASSET_STATUS.OTRO ? 'Descripción' : 'Observaciones'}
+                                  </label>
+                                  <input
+                                    placeholder={asset.status === ASSET_STATUS.OTRO ? 'Describe el estado' : 'Observaciones adicionales'}
+                                    value={asset.description}
+                                    onChange={(e) => handleStaffAssetChange(idx, assetIdx, "description", e.target.value)}
+                                    className={`w-full px-2 py-1 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs ${themeClasses.inputBg}`}
+                                    disabled={true}
+                                  />
+                                </div>
+                              </div>
+                              
+                              {asset.status && (
+                                <div className={`mt-2 px-2 py-1 rounded text-xs font-medium text-center ${getStatusColor(asset.status)}`}>
+                                  {asset.status}
+                                  {asset.description && asset.status !== ASSET_STATUS.OPTIMO && (
+                                    <span className="ml-1">: {asset.description}</span>
                                   )}
                                 </div>
                               )}
                             </div>
-
-                            <div className="md:col-span-2">
-                              <div className="flex justify-between items-center">
-                                <label className={`block text-xs md:text-sm font-medium ${darkMode ? 'text-blue-300' : 'text-blue-700'} mb-1`}>Activos</label>
-                                {editMode && (
-                                  <button
-                                    type="button"
-                                    onClick={() => addStaffAsset(idx)}
-                                    className="text-xs flex items-center gap-1 text-blue-500 hover:text-blue-700"
-                                  >
-                                    <FiPlus size={12} /> Agregar activo
-                                  </button>
-                                )}
-                              </div>
-                              <div className="space-y-1 md:space-y-2">
-                                {staff.assets.map((asset, assetIdx) => (
-                                  <div key={asset.id} className="grid grid-cols-12 gap-2 md:gap-3 items-center">
-                                    <div className="col-span-5">
-                                      <input
-                                        placeholder="Nombre activo"
-                                        value={asset.name}
-                                        onChange={(e) => handleStaffAssetChange(idx, assetIdx, "name", e.target.value)}
-                                        className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
-                                        disabled={!editMode}
-                                      />
-                                    </div>
-                                    <div className="col-span-5">
-                                      <input
-                                        placeholder="Código"
-                                        value={asset.code}
-                                        onChange={(e) => handleStaffAssetChange(idx, assetIdx, "code", e.target.value)}
-                                        className={`w-full px-2 py-1 md:px-3 md:py-2 border ${themeClasses.inputBorder} rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 text-xs md:text-sm ${themeClasses.inputBg}`}
-                                        disabled={!editMode}
-                                      />
-                                    </div>
-                                    {editMode && (
-                                      <div className="col-span-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => removeStaffAsset(idx, assetIdx)}
-                                          className="text-red-500 hover:text-red-700 p-1"
-                                        >
-                                          <FiX size={16} />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
+                          ))}
                         </div>
-                      ))}
-
-                      {editMode && (
-                        <div className="flex flex-wrap justify-between items-center gap-2 md:gap-3 pt-3 md:pt-4 border-t border-blue-200">
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => toggleAdminOccupied(selectedAdminRoom.id)}
-                              className={`px-3 py-1 md:px-4 md:py-2 rounded font-medium text-sm md:text-base ${
-                                adminRoomsStatus[selectedAdminRoom.id]
-                                  ? "bg-yellow-400 hover:bg-yellow-500 text-blue-900"
-                                  : darkMode 
-                                    ? "bg-blue-700 hover:bg-blue-600 text-white" 
-                                    : "bg-blue-200 hover:bg-blue-300 text-blue-800"
-                              } transition-colors`}
-                            >
-                              {adminRoomsStatus[selectedAdminRoom.id] ? "Marcar Disponible" : "Marcar Ocupado"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => clearAdminRoomData(selectedAdminRoom.id)}
-                              className={`px-3 py-1 md:px-4 md:py-2 rounded font-medium text-sm md:text-base ${
-                                darkMode 
-                                  ? "bg-red-700 hover:bg-red-600 text-white" 
-                                  : "bg-red-200 hover:bg-red-300 text-red-800"
-                              } transition-colors flex items-center gap-1`}
-                            >
-                              <FiTrash2 /> Vaciar
-                            </button>
-                          </div>
-
-                          <div className="flex gap-2 md:gap-3">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedAdminRoom(null);
-                                setEditMode(false);
-                              }}
-                              className={`px-3 py-1 md:px-4 md:py-2 ${darkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'} rounded font-medium text-sm md:text-base transition-colors`}
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              type="submit"
-                              className={`px-3 py-1 md:px-4 md:py-2 flex items-center gap-1 ${darkMode ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-700 hover:bg-blue-800'} text-white rounded font-medium text-sm md:text-base transition-colors`}
-                            >
-                              <FiSave /> Guardar
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </form>
-
-                    <div className={`border ${darkMode ? 'border-gray-700' : 'border-blue-200'} rounded-lg p-4 ${darkMode ? 'bg-gray-700' : 'bg-blue-50'}`}>
-                      <h3 className={`font-semibold text-sm md:text-base ${darkMode ? 'text-blue-300' : 'text-blue-800'} mb-3 flex items-center`}>
-                        <span className={`inline-block w-2 h-2 md:w-3 md:h-3 ${darkMode ? 'bg-yellow-500' : 'bg-yellow-500'} rounded-full mr-1 md:mr-2`}></span>
-                        Código QR de la Habitación
-                      </h3>
-                      <div className="flex flex-col items-center">
-                        <div className="bg-white p-4 rounded-lg mb-4">
-                          <QRCode 
-                            value={generateAdminRoomQR(selectedAdminRoom.id)} 
-                            size={180}
-                            level="H"
-                            className="AdminQRCode"
-                          />
-                        </div>
-                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'} text-center mb-4`}>
-                          Escanea este código para acceder rápidamente a la información de esta habitación
-                        </p>
-                        <button
-                          onClick={handleDownloadAdminQR}
-                          className={`px-3 py-1 text-sm rounded flex items-center gap-1 mx-auto ${darkMode ? 'bg-gray-600 hover:bg-gray-500 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}
-                        >
-                          <FiDownload className="inline" /> Descargar QR
-                        </button>
                       </div>
                     </div>
                   </div>
+                ))}
+              </form>
+
+              <div className={`border ${darkMode ? 'border-gray-700' : `border-[${COLOR_PALETTE.primary.main}]`} rounded-lg p-4 ${darkMode ? 'bg-gray-700' : COLOR_PALETTE.primary.light}`}>
+                <h3 className={`font-semibold text-sm md:text-base ${darkMode ? 'text-blue-300' : `text-[${COLOR_PALETTE.primary.dark}]`} mb-3 flex items-center`}>
+                  <span className={`inline-block w-2 h-2 md:w-3 md:h-3 ${darkMode ? `bg-[${COLOR_PALETTE.secondary.main}]` : `bg-[${COLOR_PALETTE.secondary.main}]`} rounded-full mr-1 md:mr-2`}></span>
+                  Información de la Habitación
+                </h3>
+                <div className="flex flex-col items-center">
+                  <div className="bg-white p-4 rounded-lg mb-4 flex items-center justify-center h-48 w-48">
+                    <div className="text-center">
+                      <div className={`text-6xl font-bold ${adminRoomsStatus[selectedAdminRoom.id] ? 'text-red-500' : 'text-green-500'}`}>
+                        {selectedAdminRoom.number}
+                      </div>
+                      <p className="text-sm text-gray-600 mt-2">
+                        {selectedAdminRoom.label}
+                      </p>
+                      <p className={`text-xs font-medium mt-1 ${adminRoomsStatus[selectedAdminRoom.id] ? 'text-red-500' : 'text-green-500'}`}>
+                        {adminRoomsStatus[selectedAdminRoom.id] ? 'OCUPADA' : 'DISPONIBLE'}
+                      </p>
+                    </div>
+                  </div>
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'} text-center mb-4`}>
+                    Información detallada de la habitación
+                  </p>
                 </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
           )}
-        </AnimatePresence>
+        </RoomModal>
       </div>
     </div>
   );
 };
 
-export default RoomMap;
+export default MapaHabitaciones;

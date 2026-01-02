@@ -1,88 +1,143 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Home, Map, UserPlus, Menu, X } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { FiHome, FiFileText, FiCalendar, FiLogOut, FiMenu } from "react-icons/fi";
+import emilogin from "../assets/emilogin.png";
 
-export default function Sidebar() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+export default function Sidebar({ cerrarSesion }) {
+  const [abierto, setAbierto] = useState(false);
+  const [esMovil, setEsMovil] = useState(false);
+  const [seccionActiva, setSeccionActiva] = useState('mapa');
 
   useEffect(() => {
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth >= 768) {
-        setIsOpen(true);
-      } else {
-        setIsOpen(false);
+    const verificarSiEsMovil = () => {
+      const movil = window.innerWidth < 768;
+      setEsMovil(movil);
+      setAbierto(!movil);
+    };
+    verificarSiEsMovil();
+    window.addEventListener("resize", verificarSiEsMovil);
+    return () => window.removeEventListener("resize", verificarSiEsMovil);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = ['mapa', 'reportes', 'notas'];
+      const scrollPosition = window.scrollY + 100;
+      
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const section = document.getElementById(sections[i]);
+        if (section && scrollPosition >= section.offsetTop) {
+          setSeccionActiva(sections[i]);
+          break;
+        }
       }
     };
 
-    checkIfMobile();
-    window.addEventListener('resize', checkIfMobile);
-    
-    return () => window.removeEventListener('resize', checkIfMobile);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const toggleSidebar = () => {
-    setIsOpen(!isOpen);
+  const navegarASeccion = (seccionId) => {
+    const seccion = document.getElementById(seccionId);
+    if (seccion) {
+      const offset = 80;
+      const elementPosition = seccion.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      });
+      
+      window.location.hash = `#${seccionId}`;
+      setSeccionActiva(seccionId);
+    }
+    
+    if (esMovil) setAbierto(false);
   };
 
-  const scrollToSection = (sectionId) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-    if (isMobile) setIsOpen(false);
-  };
+  const menuItems = [
+    { id: 'mapa', icon: <FiHome size={24} />, label: "Mapa" },
+    { id: 'reportes', icon: <FiFileText size={24} />, label: "Reportes" },
+    { id: 'notas', icon: <FiCalendar size={24} />, label: "Notas" },
+  ];
 
   return (
     <>
-      {/* Mobile toggle button */}
-      <button
-        onClick={toggleSidebar}
-        className={`fixed z-50 p-2 rounded-md bg-blue-800 text-white md:hidden ${isMobile ? 'block' : 'hidden'}`}
-        style={{ top: '16px', left: '16px' }}
-      >
-        {isOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
+      {/* Botón móvil */}
+      {!abierto && (
+        <button
+          onClick={() => setAbierto(true)}
+          className="fixed z-50 p-3 rounded-full shadow-lg bg-blue-600 text-white md:hidden"
+          style={{ top: 16, left: 16 }}
+        >
+          <FiMenu size={24} />
+        </button>
+      )}
 
-      {/* Sidebar */}
-      <div
-        className={`
-          fixed md:relative z-40 bg-blue-800 text-white h-full p-4
-          transition-all duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          ${isOpen ? 'w-64' : 'w-0 md:w-64 overflow-hidden'}
-        `}
-      >
-        <h2 className="text-2xl font-bold mb-6">Residencias UAT</h2>
-        <nav className="flex flex-col gap-2">
-          <button 
-            onClick={() => scrollToSection('dashboard')}
-            className="flex items-center gap-3 hover:text-blue-300 p-3 rounded hover:bg-blue-700 transition-colors text-left w-full"
-          >
-            <Home size={20} /> Dashboard
-          </button>
-          <button 
-            onClick={() => scrollToSection('estudiantes')}
-            className="flex items-center gap-3 hover:text-blue-300 p-3 rounded hover:bg-blue-700 transition-colors text-left w-full"
-          >
-            <Map size={20} /> Mapa Habitaciones de Estudiantes
-          </button>
-          <button 
-            onClick={() => scrollToSection('administrativos')}
-            className="flex items-center gap-3 hover:text-blue-300 p-3 rounded hover:bg-blue-700 transition-colors text-left w-full"
-          >
-            <UserPlus size={20} /> Mapa Habitaciones de Administrativos y Militares
-          </button>
-        </nav>
-      </div>
-
-      {/* Mobile overlay */}
-      {isOpen && isMobile && (
+      {/* Overlay móvil */}
+      {abierto && esMovil && (
         <div 
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
-          onClick={toggleSidebar}
+          onClick={() => setAbierto(false)} 
+          className="fixed inset-0 bg-black/70 z-40 md:hidden" 
         />
       )}
+
+      {/* Sidebar - Logo grande y limpio */}
+      <aside
+        className={`fixed md:sticky top-0 z-50 bg-gradient-to-b from-blue-800 via-blue-700 to-blue-900 text-white h-screen
+          transition-transform duration-300 ease-in-out
+          ${abierto ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          w-72 flex flex-col
+          shadow-2xl
+        `}
+      >
+        {/* LOGO GRANDE - Directamente en el sidebar, sin padding superior */}
+        <div className="flex justify-center items-center pt-6 pb-4">
+          <img
+            src={emilogin}
+            alt="Universidad EMI"
+            className="w-52 h-auto max-h-32 object-contain"
+            style={{ 
+              filter: "brightness(0) invert(1)"
+            }}
+          />
+        </div>
+        
+        {/* Navegación */}
+        <nav className="flex-1 px-5 py-4">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => navegarASeccion(item.id)}
+              className={`w-full flex items-center gap-4 p-4 mb-2 rounded-xl transition-all ${
+                seccionActiva === item.id
+                  ? 'bg-blue-600 text-white shadow-lg' 
+                  : 'text-blue-100 hover:bg-blue-700 hover:text-white'
+              }`}
+            >
+              {item.icon}
+              <span className="font-medium text-sm">{item.label}</span>
+              {seccionActiva === item.id && (
+                <div className="ml-auto w-2 h-2 rounded-full bg-yellow-400"></div>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Pie del Sidebar */}
+        <div className="mt-auto p-4 border-t border-blue-700">
+          <button
+            onClick={cerrarSesion}
+            className="w-full flex items-center justify-center gap-3 p-4 rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+          >
+            <FiLogOut size={20} />
+            <span className="font-medium">Salir</span>
+          </button>
+          <div className="text-center pt-4 text-blue-300 text-xs">
+            Sistema v2.0
+          </div>
+        </div>
+      </aside>
     </>
   );
 }

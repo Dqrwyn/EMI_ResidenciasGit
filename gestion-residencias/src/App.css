@@ -1,23 +1,47 @@
+:root {
+  /* Colores principales EMI */
+  --color-azul-principal: #004F9F;      /* Azul EMI */
+  --color-amarillo-principal: #FFDD00;  /* Amarillo EMI */
+
+  /* Colores secundarios */
+  --color-azul-secundario: #00537C;
+  --color-celeste-claro: #DFEAF8;
+  --color-amarillo-oscuro: #EAB500;
+
+  /* Tipografía base */
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Contenedor principal */
 #root {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+
+  font-family: var(--font-family);
+  background: var(--color-celeste-claro);
+  color: var(--color-azul-secundario);
 }
 
+/* Logo */
 .logo {
   height: 6em;
   padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+  will-change: filter, transform;
+  transition: filter 300ms, transform 300ms;
 }
 
+.logo:hover {
+  filter: drop-shadow(0 0 1em var(--color-azul-principal));
+  transform: scale(1.05);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 1em var(--color-amarillo-principal));
+}
+
+/* Animación logo */
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
@@ -33,10 +57,35 @@
   }
 }
 
+/* Tarjetas */
 .card {
   padding: 2em;
+  border: 1px solid var(--color-azul-principal);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 10px rgba(0, 79, 159, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 14px rgba(0, 79, 159, 0.25);
+}
+
+/* Links */
+a {
+  color: var(--color-azul-principal);
+  font-weight: bold;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--color-amarillo-oscuro);
+}
+
+/* Textos secundarios */
 .read-the-docs {
-  color: #888;
+  color: var(--color-azul-secundario);
+  font-style: italic;
 }
