@@ -1,38 +1,25 @@
 {
   "name": "gestion-residencias",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.0.0",
+  "description": "Interfaz del Sistema de Gestion de Residencias - Escuela Militar de Ingenieria",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "desarrollo": "vite",
+    "compilar": "vite build",
+    "previsualizar": "vite preview"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "axios": "^1.6.2",
-    "framer-motion": "^10.16.4",
-    "react-hot-toast": "^2.4.1",
-    "react-hotkeys-hook": "^4.5.1",
-    "react-icons": "^4.12.0",
-    "react-tsparticles": "^2.12.2",
-    "tsparticles": "^2.12.0",
-    "lucide-react": "^0.309.0",
-    "pizzip": "^3.1.4",
-    "docxtemplater": "^3.42.1",
-    "file-saver": "^2.0.5"
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.0.0",
-    "autoprefixer": "^10.4.16",
-    "eslint": "^8.45.0",
-    "eslint-plugin-react": "^7.33.2",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.3",
-    "postcss": "^8.4.32",
-    "tailwindcss": "^3.3.6",
-    "vite": "^5.0.0"
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "vite": "^5.4.11"
   }
 }

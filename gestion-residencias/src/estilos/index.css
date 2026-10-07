@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-emi-gris text-emi-azulProfundo antialiased;
+    font-feature-settings: 'tnum' 0;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-emi-grisBorde;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-emi-azulMedio;
+  }
+}
+
+@layer components {
+  /* ---------- Contenedores ---------- */
+  .tarjeta {
+    @apply rounded-2xl border border-emi-grisBorde bg-white shadow-tarjeta;
+  }
+
+  .tarjeta-simple {
+    @apply rounded-xl border border-emi-grisBorde bg-white;
+  }
+
+  .seccion {
+    @apply mx-auto w-full max-w-[1400px] px-4 pb-24 pt-4 sm:px-6 lg:pb-10;
+  }
+
+  .titulo-pagina {
+    @apply text-xl font-bold tracking-tight text-emi-azulProfundo sm:text-2xl;
+  }
+
+  .subtitulo-pagina {
+    @apply mt-0.5 text-sm text-slate-500;
+  }
+
+  /* ---------- Botones ---------- */
+  .boton {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-emi-azulMedio focus-visible:ring-offset-2
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .boton-primario {
+    @apply boton bg-emi-azul text-white hover:bg-emi-azulOscuro active:scale-[0.99];
+  }
+
+  .boton-secundario {
+    @apply boton border border-emi-grisBorde bg-white text-emi-azul hover:border-emi-azul hover:bg-emi-azulClaro;
+  }
+
+  .boton-suave {
+    @apply boton bg-emi-azulClaro text-emi-azul hover:bg-emi-azulMedio hover:text-white;
+  }
+
+  .boton-amarillo {
+    @apply boton bg-emi-amarillo text-emi-azulProfundo hover:bg-emi-amarilloOscuro;
+  }
+
+  .boton-peligro {
+    @apply boton bg-emi-rojoClaro text-emi-rojo hover:bg-emi-rojo hover:text-white;
+  }
+
+  .boton-exito {
+    @apply boton bg-emi-verdeClaro text-emi-verde hover:bg-emi-verde hover:text-white;
+  }
+
+  .boton-icono {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emi-grisBorde bg-white text-slate-500
+      transition hover:border-emi-azul hover:bg-emi-azulClaro hover:text-emi-azul;
+  }
+
+  /* ---------- Formularios ---------- */
+  .etiqueta {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+
+  .campo {
+    @apply w-full rounded-xl border border-emi-grisBorde bg-white px-3 py-2.5 text-sm text-emi-azulProfundo
+      transition placeholder:text-slate-400 focus:border-emi-azulMedio focus:outline-none focus:ring-2 focus:ring-emi-azulMedio/20;
+  }
+
+  .campo-error {
+    @apply border-emi-rojo focus:border-emi-rojo focus:ring-emi-rojo/20;
+  }
+
+  /* ---------- Insignias ---------- */
+  .insignia {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide;
+  }
+
+  .insignia-azul {
+    @apply insignia bg-emi-azulClaro text-emi-azul;
+  }
+
+  .insignia-verde {
+    @apply insignia bg-emi-verdeClaro text-emi-verde;
+  }
+
+  .insignia-amarilla {
+    @apply insignia bg-emi-amarilloClaro text-emi-naranja;
+  }
+
+  .insignia-roja {
+    @apply insignia bg-emi-rojoClaro text-emi-rojo;
+  }
+
+  .insignia-gris {
+    @apply insignia bg-slate-100 text-slate-500;
+  }
+
+  /* ---------- Tablas ---------- */
+  .tabla {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .tabla thead th {
+    @apply border-b border-emi-grisBorde bg-emi-gris px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500;
+  }
+
+  .tabla tbody td {
+    @apply border-b border-slate-100 px-3 py-3 align-middle;
+  }
+
+  .tabla tbody tr:hover {
+    @apply bg-emi-gris/60;
+  }
+
+  /* ---------- Habitaciones del mapa ---------- */
+  .habitacion {
+    @apply relative w-full rounded-xl border-2 bg-white p-2.5 text-left transition
+      hover:-translate-y-0.5 hover:shadow-flotante focus:outline-none focus-visible:ring-2 focus-visible:ring-emi-azulMedio;
+  }
+
+  .habitacion-individual {
+    @apply border-emi-azul/35;
+  }
+
+  .habitacion-compartida {
+    @apply border-emi-amarilloOscuro/50;
+  }
+
+  .habitacion-departamento {
+    @apply border-emi-verde/40;
+  }
+
+  .habitacion-director {
+    @apply border-emi-amarilloOscuro bg-emi-amarilloClaro/60;
+  }
+
+  .habitacion-mantenimiento {
+    @apply border-slate-300 bg-slate-100;
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(148, 163, 184, 0.18) 0px,
+      rgba(148, 163, 184, 0.18) 8px,
+      transparent 8px,
+      transparent 16px
+    );
+  }
+}
